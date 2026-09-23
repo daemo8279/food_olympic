@@ -189,3 +189,54 @@ button{font:inherit}
   .insight-card{padding:24px 20px}
   .today-rec-card{grid-template-columns:34px 40px 1fr auto;padding:13px}
 }
+
+
+/* ---------- Share preview v6 ---------- */
+.share-preview{padding:6px 2px 2px}
+.share-brand{
+  text-align:center;font-weight:900;font-size:16px;letter-spacing:-.03em;margin:4px 42px 22px;
+  padding-bottom:16px;border-bottom:1px solid var(--line)
+}
+.share-brand b{color:var(--accent)}
+.share-winner{text-align:center;padding:4px 0 24px}
+.share-mini-label{font-size:10px;font-weight:900;letter-spacing:.15em;color:var(--accent)}
+.share-big-icon{font-size:72px;line-height:1;margin:12px 0 8px}
+.share-winner h2{font-size:42px;letter-spacing:-.055em;margin:0 0 8px}
+.share-winner p{max-width:500px;margin:0 auto;color:var(--muted);font-weight:800;line-height:1.5}
+.share-block{
+  border-top:1px solid var(--line);padding:21px 4px 4px
+}
+.share-block h3{margin:0 0 14px;font-size:17px;letter-spacing:-.03em}
+.share-best5{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.share-best5 li{
+  display:grid;grid-template-columns:30px 36px 1fr;gap:9px;align-items:center;
+  background:var(--bg-soft);border-radius:13px;padding:9px 11px
+}
+.share-rank{
+  display:grid;place-items:center;width:25px;height:25px;border-radius:50%;
+  background:#fff;color:var(--accent);font-size:12px;font-weight:1000
+}
+.share-list-icon{font-size:23px;text-align:center}
+.share-best5 strong{font-size:15px}
+.share-tastes{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.share-taste-chip{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  min-height:72px;background:#fff7ef;border:1px solid #f2d4bd;border-radius:15px;padding:10px
+}
+.share-taste-chip strong{font-size:14px;text-align:center}
+.share-taste-chip span{font-size:18px;font-weight:1000;color:var(--accent)}
+.share-dinner-list{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.share-dinner-list > div{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  min-height:92px;background:#332820;color:#fff;border-radius:15px;padding:11px;text-align:center
+}
+.share-dinner-list span{font-size:30px}
+.share-dinner-list strong{font-size:14px}
+.share-modal-actions{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px
+}
+@media(max-width:520px){
+  .share-tastes,.share-dinner-list{grid-template-columns:1fr}
+  .share-dinner-list > div{min-height:66px;flex-direction:row}
+  .share-winner h2{font-size:36px}
+}

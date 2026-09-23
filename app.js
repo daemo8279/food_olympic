@@ -423,6 +423,170 @@
     </button>`;
   }
 
+
+  function topFiveFoods(){
+    const wins = new Map();
+    const eliminatedRound = new Map();
+
+    state.history.forEach(h => {
+      wins.set(h.winner, (wins.get(h.winner) || 0) + 1);
+      // Higher round number = earlier elimination. Lower number = survived longer.
+      eliminatedRound.set(h.loser, h.round);
+    });
+
+    if(state.champion) eliminatedRound.set(state.champion, 1);
+
+    const pref = featurePreferenceMap();
+
+    return window.FOOD_DB
+      .map(f => ({
+        food:f,
+        wins:wins.get(f.id) || 0,
+        survived: eliminatedRound.get(f.id) || 999,
+        prefScore: recommendationScore(f, pref)
+      }))
+      .filter(x => x.wins > 0 || x.food.id === state.champion)
+      .sort((a,b) =>
+        (b.wins - a.wins) ||
+        (a.survived - b.survived) ||
+        (b.prefScore - a.prefScore)
+      )
+      .slice(0,5);
+  }
+
+  function shareData(){
+    const champion = foodMap.get(state.champion);
+    const best5 = topFiveFoods();
+    const tastes = tasteProfile().slice(0,3);
+    const recs = todayRecommendations(champion).slice(0,3);
+
+    return {
+      champion,
+      best5,
+      tastes,
+      recs
+    };
+  }
+
+  function shareText(){
+    const d = shareData();
+    const tasteLine = d.tastes.length
+      ? d.tastes.map(x => `${x.label} ${x.rate}%`).join(" · ")
+      : d.champion.taste;
+
+    return [
+      "🍽️ 음식 이상형 월드컵 결과",
+      "",
+      `🏆 내 최애 음식: ${d.champion.name}`,
+      "",
+      "❤️ 내가 가장 좋아하는 음식 BEST 5",
+      ...d.best5.map((x,i) => `${i+1}. ${x.food.name}`),
+      "",
+      "😋 내가 좋아하는 맛은?",
+      tasteLine,
+      "",
+      "🌙 오늘 저녁 메뉴 추천",
+      ...d.recs.map((x,i) => `${i+1}. ${x.food.name}`),
+      "",
+      "오늘 뭐 먹지? 음식 이상형 월드컵"
+    ].join("\n");
+  }
+
+  function openShareModal(){
+    const d = shareData();
+    const modal = document.getElementById("foodModal");
+    const content = document.getElementById("modalContent");
+
+    content.innerHTML = `
+      <div class="share-preview">
+        <div class="share-brand">오늘 뭐 먹지? <b>WORLD CUP</b></div>
+
+        <section class="share-winner">
+          <span class="share-mini-label">MY FAVORITE FOOD</span>
+          <div class="share-big-icon">${iconFor(d.champion.name)}</div>
+          <h2 id="modalTitle">${d.champion.name}</h2>
+          <p>${buildCharacterLine()}</p>
+        </section>
+
+        <section class="share-block">
+          <h3>❤️ 내가 가장 좋아하는 음식 BEST 5</h3>
+          <ol class="share-best5">
+            ${d.best5.map((x,i) => `
+              <li>
+                <span class="share-rank">${i+1}</span>
+                <span class="share-list-icon">${iconFor(x.food.name)}</span>
+                <strong>${x.food.name}</strong>
+              </li>
+            `).join("")}
+          </ol>
+        </section>
+
+        <section class="share-block">
+          <h3>😋 내가 좋아하는 맛은?</h3>
+          <div class="share-tastes">
+            ${d.tastes.map(x => `
+              <div class="share-taste-chip">
+                <strong>${x.label}</strong>
+                <span>${x.rate}%</span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+
+        <section class="share-block share-dinner">
+          <h3>🌙 오늘 저녁 메뉴 추천</h3>
+          <div class="share-dinner-list">
+            ${d.recs.map((x,i) => `
+              <div>
+                <span>${iconFor(x.food.name)}</span>
+                <strong>${x.food.name}</strong>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+
+        <div class="share-modal-actions">
+          <button class="btn btn-primary" id="nativeShareBtn">공유하기</button>
+          <button class="btn btn-secondary" id="copyShareBtn">텍스트 복사</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden","false");
+    document.body.style.overflow = "hidden";
+
+    document.getElementById("nativeShareBtn")?.addEventListener("click", async () => {
+      const text = shareText();
+      if(navigator.share){
+        try{
+          await navigator.share({
+            title:"음식 이상형 월드컵 결과",
+            text
+          });
+        }catch(e){
+          if(e?.name !== "AbortError") {
+            try{ await navigator.clipboard.writeText(text); alert("공유가 지원되지 않아 결과를 복사했어요."); }
+            catch(err){ prompt("아래 결과를 복사하세요.", text); }
+          }
+        }
+      }else{
+        try{ await navigator.clipboard.writeText(text); alert("결과를 복사했어요."); }
+        catch(e){ prompt("아래 결과를 복사하세요.", text); }
+      }
+    });
+
+    document.getElementById("copyShareBtn")?.addEventListener("click", async () => {
+      const text = shareText();
+      try{
+        await navigator.clipboard.writeText(text);
+        alert("공유용 결과를 복사했어요.");
+      }catch(e){
+        prompt("아래 결과를 복사하세요.", text);
+      }
+    });
+  }
+
   function renderResult(){
     const food = foodMap.get(state.champion);
     const insight = surprisingInsight();
@@ -483,7 +647,7 @@
       </section>
 
       <div class="result-actions">
-        <button class="btn btn-primary" id="copyBtn">내 결과 복사하기</button>
+        <button class="btn btn-primary" id="shareResultBtn">결과 공유하기</button>
         <button class="btn btn-secondary" id="winnerInfoBtn">우승 음식 설명 보기</button>
         <button class="btn btn-secondary" id="resetBtnBottom">다시 해보기</button>
       </div>
@@ -513,12 +677,7 @@
       });
     });
     document.getElementById("winnerInfoBtn")?.addEventListener("click", () => openModal(state.champion));
-    document.getElementById("copyBtn")?.addEventListener("click", async () => {
-      const name = foodMap.get(state.champion).name;
-      const text = `내 음식 이상형 월드컵 1위는 ${name}! 🏆`;
-      try { await navigator.clipboard.writeText(text); alert("결과를 복사했어요."); }
-      catch(e){ prompt("아래 문장을 복사하세요.", text); }
-    });
+    document.getElementById("shareResultBtn")?.addEventListener("click", openShareModal);
     document.getElementById("modalCloseBtn")?.addEventListener("click", closeModal);
     document.querySelectorAll("[data-close-modal='true']").forEach(el => el.addEventListener("click", closeModal));
   }

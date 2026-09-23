@@ -26,3 +26,13 @@
 - Pairwise preference analysis based on actual winner/loser choices
 - Added "그래서 오늘 뭐 먹지?" 3-menu recommendations derived from the user's tournament selections
 - Recommendation cards open the existing food-description modal
+
+
+## v6 share result
+Share preview now includes:
+- My favorite food (champion)
+- Top 5 favorite foods
+- Top 3 taste preferences from pairwise choice analysis
+- 3 dinner menu recommendations
+- Web Share API support on compatible mobile browsers
+- Text copy fallback on desktop/unsupported browsers
