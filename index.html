@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fff8f1" />
+  <meta name="description" content="128가지 음식 중 단 하나의 최애를 고르는 음식 이상형 월드컵" />
+  <title>오늘 뭐 먹지? 음식 이상형 월드컵 128강</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main id="app"></main>
+  <div id="foodModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="modalCloseBtn" aria-label="닫기">×</button>
+      <div id="modalContent"></div>
+    </section>
+  </div>
+  <script src="./data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
