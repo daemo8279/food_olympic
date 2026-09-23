@@ -19,3 +19,10 @@
 - Food card is now a clickable `<div role="button">`.
 - `음식 설명 보기` remains a real button inside the card.
 - Added Enter/Space keyboard selection for accessibility.
+
+
+## v5 result report
+- Result order: winner → one-line taste character → why this result → detailed taste scores → surprising insight
+- Pairwise preference analysis based on actual winner/loser choices
+- Added "그래서 오늘 뭐 먹지?" 3-menu recommendations derived from the user's tournament selections
+- Recommendation cards open the existing food-description modal

@@ -221,34 +221,281 @@
     </div>`;
   }
 
+
+  const TASTE_TRAITS = ["매콤","감칠맛","고소","달콤","새콤","담백","짭짤","진한맛","부드러움","시원","향신료","바삭","크리미","불향"];
+  const TRAIT_LABEL = {
+    "매콤":"매콤함","감칠맛":"감칠맛","고소":"고소함","달콤":"달콤함","새콤":"산뜻한 새콤함",
+    "담백":"담백함","짭짤":"짭짤함","진한맛":"진한 풍미","부드러움":"부드러움","시원":"시원함",
+    "향신료":"향신료 풍미","바삭":"바삭한 식감","크리미":"크리미함","불향":"불향"
+  };
+
+  function tokens(text){
+    return String(text || "")
+      .split(/[·,/]/)
+      .map(x => x.trim())
+      .filter(Boolean);
+  }
+
+  // "기회가 있었을 때 실제로 그 특징을 골랐는가"를 계산.
+  function pairwiseTraitStats(){
+    const stats = new Map();
+
+    function ensure(key, group, label){
+      if(!stats.has(key)) stats.set(key, {key, group, label, win:0, opportunity:0});
+      return stats.get(key);
+    }
+
+    state.history.forEach(h => {
+      const w = foodMap.get(h.winner);
+      const l = foodMap.get(h.loser);
+      if(!w || !l) return;
+
+      // Taste traits
+      TASTE_TRAITS.forEach(t => {
+        const wt = tokens(w.taste).includes(t);
+        const lt = tokens(l.taste).includes(t);
+        if(wt !== lt){
+          const s = ensure("taste:"+t, "맛", TRAIT_LABEL[t] || t);
+          s.opportunity += 1;
+          if(wt) s.win += 1;
+        }
+      });
+
+      // Cooking method, category, region and class — only meaningful pairwise contrasts
+      [
+        ["조리법", "cook:", w.cooking, l.cooking],
+        ["음식형태", "type:", w.type, l.type],
+        ["카테고리", "cat:", w.category, l.category],
+        ["권역", "region:", w.region, l.region],
+      ].forEach(([group,prefix,wv,lv]) => {
+        if(wv && lv && wv !== lv){
+          const sw = ensure(prefix+wv, group, wv);
+          sw.opportunity += 1; sw.win += 1;
+          const sl = ensure(prefix+lv, group, lv);
+          sl.opportunity += 1;
+        }
+      });
+    });
+
+    return [...stats.values()].map(s => ({
+      ...s,
+      rate: s.opportunity ? Math.round(s.win / s.opportunity * 100) : 0
+    }));
+  }
+
+  function tasteProfile(){
+    const stats = pairwiseTraitStats()
+      .filter(x => x.group === "맛" && x.opportunity >= 3)
+      .sort((a,b) => (b.rate - a.rate) || (b.opportunity - a.opportunity));
+
+    // Always show up to 5, fall back to traits with 1+ opportunities.
+    if(stats.length >= 5) return stats.slice(0,5);
+    const fallback = pairwiseTraitStats()
+      .filter(x => x.group === "맛" && x.opportunity >= 1 && !stats.some(y => y.key === x.key))
+      .sort((a,b) => (b.rate - a.rate) || (b.opportunity - a.opportunity));
+    return [...stats, ...fallback].slice(0,5);
+  }
+
+  function categoryProfile(){
+    return pairwiseTraitStats()
+      .filter(x => x.group === "카테고리" && x.opportunity >= 2)
+      .sort((a,b) => (b.rate - a.rate) || (b.opportunity - a.opportunity));
+  }
+
+  function buildCharacterLine(){
+    const tastes = tasteProfile();
+    const cats = categoryProfile();
+    const t1 = tastes[0]?.label || "익숙한 맛";
+    const t2 = tastes[1]?.label || "든든한 한 끼";
+    const c1 = cats[0]?.label?.replace("·"," ") || "";
+    if(c1) return `${t1}은 확실하게, ${t2}도 놓치지 않는 ${c1} 취향`;
+    return `${t1}을 중심으로 ${t2}까지 챙기는 선명한 입맛`;
+  }
+
+  function buildWhyText(champion){
+    const tastes = tasteProfile().slice(0,3);
+    const tasteText = tastes.map(x => x.label).join(", ");
+    const selectedSameCategory = state.history.filter(h => foodMap.get(h.winner)?.category === champion.category).length;
+    const total = Math.max(state.history.length,1);
+    const catRate = Math.round(selectedSameCategory / total * 100);
+
+    return `${champion.name}이 마지막까지 남은 건 우연만은 아니에요. 대결 기록을 보면 ${tasteText || champion.taste}처럼 ${champion.name}이 가진 맛의 방향을 반복해서 선택했고, ${champion.category} 계열도 전체 선택 중 약 ${catRate}%에서 승자로 골랐어요. 결승 결과와 앞선 선택 패턴이 같은 방향을 가리키고 있습니다.`;
+  }
+
+  function surprisingInsight(){
+    const all = pairwiseTraitStats();
+    const tastes = all.filter(x => x.group === "맛" && x.opportunity >= 5)
+      .sort((a,b) => (b.rate-a.rate) || (b.opportunity-a.opportunity));
+
+    if(tastes.length >= 2){
+      const top = tastes[0];
+      // Prefer a comparison trait with enough opportunity and a meaningful gap.
+      const compare = tastes.slice(1).find(x => top.rate - x.rate >= 8) || tastes[1];
+      return {
+        headline:`의외로 ${top.label}을 가장 안정적으로 골랐어요.`,
+        body:`${top.label}이 있는 음식은 비교 기회 ${top.opportunity}번 중 ${top.win}번 선택했어요(${top.rate}%). ${compare.label}의 선택률 ${compare.rate}%보다 높았습니다. 평소 스스로 생각하는 취향과 실제 선택 패턴이 조금 다를 수도 있어요.`
+      };
+    }
+
+    const nonTaste = all.filter(x => ["조리법","음식형태"].includes(x.group) && x.opportunity >= 4)
+      .sort((a,b) => (b.rate-a.rate) || (b.opportunity-a.opportunity))[0];
+
+    if(nonTaste){
+      return {
+        headline:`생각보다 ‘${nonTaste.label}’ 스타일을 자주 골랐어요.`,
+        body:`${nonTaste.label}이 다른 방식과 맞붙은 ${nonTaste.opportunity}번의 선택에서 ${nonTaste.win}번 이겼어요(${nonTaste.rate}%). 음식 이름보다 조리 방식에서 취향이 더 선명하게 드러난 셈이에요.`
+      };
+    }
+
+    return {
+      headline:"우승 음식보다 반복된 선택 패턴이 더 흥미로워요.",
+      body:"결승 한 번의 선택보다 앞선 대결에서 반복해서 고른 맛과 조리 방식이 실제 취향을 더 잘 보여줍니다."
+    };
+  }
+
+  function featurePreferenceMap(){
+    const stats = pairwiseTraitStats();
+    return new Map(stats.map(s => [s.key, s]));
+  }
+
+  function recommendationScore(food, pref){
+    let score = 0;
+    let weight = 0;
+
+    tokens(food.taste).forEach(t => {
+      const s = pref.get("taste:"+t);
+      if(s && s.opportunity >= 2){ score += s.rate * 2.2; weight += 2.2; }
+    });
+
+    const cat = pref.get("cat:"+food.category);
+    if(cat && cat.opportunity >= 2){ score += cat.rate * 1.2; weight += 1.2; }
+
+    const cook = pref.get("cook:"+food.cooking);
+    if(cook && cook.opportunity >= 2){ score += cook.rate * .8; weight += .8; }
+
+    const type = pref.get("type:"+food.type);
+    if(type && type.opportunity >= 2){ score += type.rate * .6; weight += .6; }
+
+    return weight ? score / weight : 50;
+  }
+
+  function todayRecommendations(champion){
+    const pref = featurePreferenceMap();
+    const selectedIds = new Set(state.history.map(h => h.winner));
+
+    // Prefer foods user has already shown some interest in, but allow new close fits too.
+    return window.FOOD_DB
+      .filter(f => f.id !== champion.id)
+      .map(f => {
+        let score = recommendationScore(f, pref);
+        if(selectedIds.has(f.id)) score += 5;
+        if(f.category === champion.category) score += 3;
+        return {food:f, score};
+      })
+      .sort((a,b) => b.score-a.score)
+      .slice(0,3);
+  }
+
+  function preferenceBars(){
+    const list = tasteProfile();
+    if(!list.length) return `<p class="empty-analysis">선택 기록이 더 쌓이면 세부 취향을 보여드릴게요.</p>`;
+    return `<div class="pref-bars">
+      ${list.map((x,i) => `
+        <div class="pref-row">
+          <div class="pref-label"><span>${x.label}</span><strong>${x.rate}</strong></div>
+          <div class="pref-track"><span style="width:${Math.max(4,x.rate)}%"></span></div>
+          <div class="pref-caption">비교 ${x.opportunity}회 · 선택 ${x.win}회</div>
+        </div>
+      `).join("")}
+    </div>`;
+  }
+
+  function recCard(item, index){
+    const f = item.food;
+    return `<button class="today-rec-card" data-info="${f.id}" type="button">
+      <span class="rec-rank">${index+1}</span>
+      <span class="rec-icon">${iconFor(f.name)}</span>
+      <span class="rec-copy">
+        <strong>${f.name}</strong>
+        <small>${f.taste} · ${f.category}</small>
+      </span>
+      <span class="rec-arrow">→</span>
+    </button>`;
+  }
+
   function renderResult(){
     const food = foodMap.get(state.champion);
-    const recent = state.history.slice(-8).reverse();
-    return `<div class="shell result">
-      <section class="result-card">
-        <div class="crown">🏆</div>
-        <div class="kicker">YOUR NO.1 FOOD</div>
+    const insight = surprisingInsight();
+    const recs = todayRecommendations(food);
+    const charLine = buildCharacterLine();
+    const why = buildWhyText(food);
+
+    return `<div class="shell result-page">
+      <header class="brand result-brand">
+        <div class="logo">오늘 뭐 먹지? <b>WORLD CUP</b></div>
+        <button class="btn btn-ghost" id="resetBtn">다시 하기</button>
+      </header>
+
+      <section class="winner-hero">
+        <div class="winner-kicker">🏆 128강 최종 우승</div>
         ${renderVisual(food)}
         <h1>${food.name}</h1>
         ${chips(food)}
-        <p>128가지 음식 끝에 남은 당신의 최종 선택입니다.<br><strong>${food.name}</strong>이 오늘의 음식 이상형 1위예요.</p>
-        <div class="actions">
-          <button class="btn btn-primary" id="resetBtn">다시 하기</button>
-          <button class="btn btn-secondary" id="copyBtn">결과 복사</button>
-          <button class="btn btn-secondary" id="winnerInfoBtn">음식 설명 보기</button>
-        </div>
-        <details class="history-list">
-          <summary>마지막 선택 기록 보기</summary>
-          <ol>${recent.map(h => `<li>${roundLabel(h.round)} · ${foodMap.get(h.winner).name} 승</li>`).join("")}</ol>
-        </details>
-        <div class="footer-note">결과는 브라우저에만 저장됩니다.</div>
+        <p class="taste-character">${charLine}</p>
       </section>
+
+      <section class="analysis-section">
+        <div class="section-number">01</div>
+        <div class="section-copy">
+          <h2>왜 이런 결과가 나왔을까요?</h2>
+          <p>${why}</p>
+        </div>
+      </section>
+
+      <section class="analysis-card">
+        <div class="analysis-card-head">
+          <div>
+            <span class="eyebrow">MY TASTE PROFILE</span>
+            <h2>선택으로 드러난 세부 취향</h2>
+          </div>
+          <span class="analysis-note">127번의 선택 기록 기반</span>
+        </div>
+        ${preferenceBars()}
+      </section>
+
+      <section class="insight-card">
+        <span class="insight-label">뜻밖의 발견</span>
+        <h2>${insight.headline}</h2>
+        <p>${insight.body}</p>
+      </section>
+
+      <section class="today-section">
+        <div class="today-head">
+          <div>
+            <span class="eyebrow">SO, WHAT SHOULD I EAT TODAY?</span>
+            <h2>그래서 오늘 뭐 먹지?</h2>
+            <p>월드컵에서 드러난 취향을 기준으로 오늘 끌릴 가능성이 높은 메뉴를 골랐어요.</p>
+          </div>
+        </div>
+        <div class="today-recs">
+          ${recs.map((x,i) => recCard(x,i)).join("")}
+        </div>
+      </section>
+
+      <div class="result-actions">
+        <button class="btn btn-primary" id="copyBtn">내 결과 복사하기</button>
+        <button class="btn btn-secondary" id="winnerInfoBtn">우승 음식 설명 보기</button>
+        <button class="btn btn-secondary" id="resetBtnBottom">다시 해보기</button>
+      </div>
+
+      <div class="footer-note">분석은 이번 월드컵의 실제 선택 기록을 바탕으로 계산합니다.</div>
     </div>`;
   }
 
   function bind(){
     document.getElementById("startBtn")?.addEventListener("click", start);
     document.getElementById("resetBtn")?.addEventListener("click", reset);
+    document.getElementById("resetBtnBottom")?.addEventListener("click", reset);
     document.getElementById("undoBtn")?.addEventListener("click", undo);
     document.querySelectorAll("[data-pick]").forEach(card => {
       card.addEventListener("click", () => selectWinner(card.dataset.pick));
