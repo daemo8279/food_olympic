@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fff8f1" />
+  <meta name="description" content="128강 음식 이상형 월드컵. 최애 음식, BEST 5, 좋아하는 맛, 오늘 저녁 메뉴 추천까지 한 번에 확인하세요." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="오늘 뭐 먹지? WORLD CUP" />
+  <meta property="og:title" content="오늘 뭐 먹지? 음식 이상형 월드컵" />
+  <meta property="og:description" content="128강 음식 이상형 월드컵. 최애 음식, BEST 5, 좋아하는 맛, 오늘 저녁 메뉴 추천까지 한 번에 확인하세요." />
+  <meta property="og:image" content="/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:url" content="/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="오늘 뭐 먹지? 음식 이상형 월드컵" />
+  <meta name="twitter:description" content="128강 음식 이상형 월드컵. 최애 음식, BEST 5, 좋아하는 맛, 오늘 저녁 메뉴 추천까지 한 번에 확인하세요." />
+  <meta name="twitter:image" content="/og-image.png" />
+  <title>오늘 뭐 먹지? 음식 이상형 월드컵 128강</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main id="app"></main>
+  <div id="foodModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal="true"></div>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="modalCloseBtn" aria-label="닫기">×</button>
+      <div id="modalContent"></div>
+    </section>
+  </div>
+  <script src="./data.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
