@@ -24,3 +24,11 @@
 - New root OG filename: `/og-home-v15.jpg`
 - New dynamic result OG path: `/og-v15/{token}.png`
 - Dynamic OG rendering falls back to a valid PNG template instead of returning an error
+
+
+## v16
+- Removed the Worker homepage interception that caused `/` ↔ `/index.html` redirect loops.
+- Homepage now comes directly from Static Assets.
+- Root OG URLs are hardcoded to `https://foodolympic.kyoon.app`.
+- New root image URL: `/og-home-v16.jpg`.
+- Dynamic result OG route bumped to `/og-v16/{token}.png`.

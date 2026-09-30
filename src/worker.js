@@ -5,12 +5,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Homepage: inject absolute OG URLs. Kakao is much more reliable with
-    // fully-qualified og:image/og:url values than relative paths.
-    if (url.pathname === "/" || url.pathname === "") {
-      return homepage(request, env, url);
-    }
-
     if (url.pathname.startsWith("/result/")) {
       const token = url.pathname.slice("/result/".length);
       const data = decodeToken(token);
@@ -18,8 +12,8 @@ export default {
       return resultPage(url, token, data);
     }
 
-    if (url.pathname.startsWith("/og-v15/") && url.pathname.endsWith(".png")) {
-      const token = url.pathname.slice("/og-v15/".length, -4);
+    if (url.pathname.startsWith("/og-v16/") && url.pathname.endsWith(".png")) {
+      const token = url.pathname.slice("/og-v16/".length, -4);
       const data = decodeToken(token);
       if (!data?.champion?.name) return new Response("Invalid OG token", { status: 400 });
 
@@ -156,60 +150,11 @@ async function renderOgPng(request, env, data) {
 }
 
 
-async function homepage(request, env, url) {
-  const indexUrl = new URL("/index.html", url.origin);
-  const response = await env.ASSETS.fetch(new Request(indexUrl, request));
-  if (!response.ok) return response;
-
-  let html = await response.text();
-
-  const rootUrl = `${url.origin}/`;
-  // Versioned image URL helps force a fresh image fetch after design changes.
-  const imageUrl = `${url.origin}/og-home-v15.jpg`;
-
-  html = html
-    .replace(
-      /<meta property="og:image" content="[^"]*" \/>/,
-      `<meta property="og:image" content="${imageUrl}" />`
-    )
-    .replace(
-      /<meta property="og:url" content="[^"]*" \/>/,
-      `<meta property="og:url" content="${rootUrl}" />`
-    )
-    .replace(
-      /<meta name="twitter:image" content="[^"]*" \/>/,
-      `<meta name="twitter:image" content="${imageUrl}" />`
-    );
-
-  // Add explicit image metadata if not already present.
-  if (!html.includes('property="og:image:type"')) {
-    html = html.replace(
-      '<meta property="og:image:width" content="1200" />',
-      `<meta property="og:image:type" content="image/jpeg" />
-  <meta property="og:image:width" content="1200" />`
-    );
-  }
-  if (!html.includes('property="og:image:secure_url"')) {
-    html = html.replace(
-      `<meta property="og:image" content="${imageUrl}" />`,
-      `<meta property="og:image" content="${imageUrl}" />
-  <meta property="og:image:secure_url" content="${imageUrl}" />`
-    );
-  }
-
-  return new Response(html, {
-    headers: {
-      "Content-Type": "text/html; charset=UTF-8",
-      "Cache-Control": "public, max-age=60"
-    }
-  });
-}
-
 function resultPage(url, token, data) {
   const champion = String(data.champion?.name || "");
   const bestMenu = compactNames(data.best5, 3);
   const todayMenu = compactNames(data.recs, 3);
-  const ogImage = `${url.origin}/og-v15/${token}.png`;
+  const ogImage = `${url.origin}/og-v16/${token}.png`;
   const appView = `${url.origin}/?share=${encodeURIComponent(token)}`;
 
   const title = `${champion} 우승! 음식 이상형 월드컵 결과`;

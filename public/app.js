@@ -556,7 +556,7 @@
     // KakaoTalk link-card preview is most reliable when the message contains
     // the URL by itself. Copy only the URL so the user can paste it into Kakao.
     return navigator.clipboard.writeText(url)
-      .then(() => alert("개인 결과 링크를 복사했어요. 카카오톡에 그대로 붙여넣으면 결과 이미지 카드가 표시됩니다."))
+      .then(() => alert("개인 결과 링크를 복사했어요. 카카오톡에 링크만 그대로 붙여넣으세요."))
       .catch(() => prompt("아래 링크만 복사해서 카카오톡에 붙여넣으세요.", url));
   }
 
