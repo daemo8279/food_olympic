@@ -552,18 +552,12 @@
 
   function shareResultLink(){
     const url = buildResultShareUrl();
-    const text = shareText(url);
-    if(navigator.share){
-      navigator.share({
-        title: "나의 음식 이상형 월드컵 결과",
-        text,
-        url
-      }).catch(() => {});
-      return;
-    }
+
+    // KakaoTalk link-card preview is most reliable when the message contains
+    // the URL by itself. Copy only the URL so the user can paste it into Kakao.
     return navigator.clipboard.writeText(url)
-      .then(() => alert("개인 결과 링크를 복사했어요."))
-      .catch(() => prompt("아래 링크를 복사하세요.", url));
+      .then(() => alert("개인 결과 링크를 복사했어요. 카카오톡에 그대로 붙여넣으면 결과 이미지 카드가 표시됩니다."))
+      .catch(() => prompt("아래 링크만 복사해서 카카오톡에 붙여넣으세요.", url));
   }
 
   function copyResultLink(){
@@ -1070,13 +1064,13 @@
 
         <section class="share-link-box">
           <h3>개인 결과 링크 공유</h3>
-          <p>이 링크를 공유하면 카카오톡 등에서 <b>개인 결과별 미리보기 카드</b>가 뜹니다.</p>
+          <p>카카오톡 미리보기를 위해 <b>결과 URL만 복사</b>합니다. 복사한 링크를 카카오톡에 그대로 붙여넣으세요.</p>
           <input class="share-link-input" id="shareLinkInput" readonly />
         </section>
 
         <div class="share-modal-actions">
           <button class="btn btn-primary" id="shareImageBtn">이미지 카드 공유하기</button>
-          <button class="btn btn-secondary" id="shareLinkBtn">결과 링크 공유</button>
+          <button class="btn btn-secondary" id="shareLinkBtn">카카오 링크 복사</button>
           <button class="btn btn-secondary" id="copyLinkBtn">링크 복사</button>
           <button class="btn btn-secondary" id="downloadImageBtn">PNG 저장</button>
           <button class="btn btn-secondary" id="copyShareBtn">문구 복사</button>
