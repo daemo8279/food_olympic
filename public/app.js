@@ -16,30 +16,95 @@
   ];
   const iconFor = name => (iconRules.find(([r]) => r.test(name)) || [null, "🍽️"])[1];
   const roundLabel = n => n === 2 ? "결승" : n === 4 ? "4강" : n === 8 ? "8강" : `${n}강`;
-  const initialState = () => ({
+
+  const MODE_CONFIG = {
+    64: { label:"기본 모드", roundSize:64, choiceCount:63, matchesPerRegion:4 },
+    32: { label:"빠르게 하기", roundSize:32, choiceCount:31, matchesPerRegion:2 },
+    128:{ label:"도전 모드", roundSize:128, choiceCount:127, matchesPerRegion:8 }
+  };
+
+  function shuffled(list){
+    const arr = list.slice();
+    for(let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function buildInitialRound(size){
+    const config = MODE_CONFIG[size] || MODE_CONFIG[64];
+
+    if(size === 128){
+      return window.R128_PAIRS
+        .slice()
+        .sort((a,b) => a.match - b.match)
+        .map(p => [p.a, p.b]);
+    }
+
+    const regions = ["A","B","C","D","E","F","G","H"];
+    const picked = [];
+
+    regions.forEach(region => {
+      const regionPairs = window.R128_PAIRS.filter(p => p.region === region);
+      picked.push(...shuffled(regionPairs).slice(0, config.matchesPerRegion));
+    });
+
+    return shuffled(picked).map(p => [p.a, p.b]);
+  }
+
+  const initialState = (mode = 64) => ({
     started:false,
-    roundSize:128,
-    round: window.R128_PAIRS.map(p => [p.a, p.b]),
+    selectedMode:Number(mode) || 64,
+    roundSize:Number(mode) || 64,
+    round:[],
+    initialRound:[],
     matchIndex:0,
     nextRound:[],
     history:[],
     champion:null
   });
 
-  let state = initialState();
+  let state = initialState(64);
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && Array.isArray(saved.round)) state = saved;
+    if (saved && Array.isArray(saved.round)) {
+      state = saved;
+      if(!state.selectedMode) state.selectedMode = state.roundSize || 64;
+      if(!state.initialRound) state.initialRound = state.round ? state.round.map(pair => pair.slice()) : [];
+    }
   } catch(e) {}
 
   function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   function reset(){
     if(!confirm("진행 중인 월드컵을 처음부터 다시 시작할까요?")) return;
+    const keepMode = state.selectedMode || 64;
     localStorage.removeItem(STORAGE_KEY);
-    state = initialState();
+    state = initialState(keepMode);
     render();
   }
-  function start(){ state.started = true; save(); render(); }
+
+  function selectMode(mode){
+    const nextMode = Number(mode);
+    if(!MODE_CONFIG[nextMode]) return;
+    localStorage.removeItem(STORAGE_KEY);
+    state = initialState(nextMode);
+    render();
+  }
+
+  function start(){
+    const mode = state.selectedMode || 64;
+    state.started = true;
+    state.roundSize = mode;
+    state.round = buildInitialRound(mode);
+    state.initialRound = state.round.map(pair => pair.slice());
+    state.matchIndex = 0;
+    state.nextRound = [];
+    state.history = [];
+    state.champion = null;
+    save();
+    render();
+  }
 
   function selectWinner(id){
     const pair = state.round[state.matchIndex];
@@ -67,9 +132,18 @@
   function undo(){
     if(!state.history.length) return;
     const keep = state.history.slice(0,-1);
-    state = initialState();
+    const mode = state.selectedMode || 64;
+    const originalRound = (state.initialRound && state.initialRound.length)
+      ? state.initialRound.map(pair => pair.slice())
+      : buildInitialRound(mode);
+
+    state = initialState(mode);
     state.started = true;
+    state.roundSize = mode;
+    state.round = originalRound.map(pair => pair.slice());
+    state.initialRound = originalRound.map(pair => pair.slice());
     state.history = [];
+
     for(const item of keep){
       state.history.push(item);
       state.nextRound.push(item.winner);
@@ -175,19 +249,49 @@
   }
 
   function renderStart(){
+    const mode = state.selectedMode || 64;
+    const config = MODE_CONFIG[mode];
+
     return `<div class="shell hero">
       <section class="hero-card">
-        <div class="kicker">FOOD WORLD CUP · ROUND OF 128</div>
+        <div class="kicker">FOOD WORLD CUP · CHOOSE YOUR ROUND</div>
         <h1>오늘 뭐 먹지?<br>음식 이상형 월드컵</h1>
-        <p>128가지 음식 중 매 라운드 하나만 선택하세요. 비슷한 음식끼리 너무 빨리 만나지 않도록 균형 있게 짠 128강 대진에서, 당신의 최종 1위를 찾아봅니다.</p>
-        <div class="actions">
-          <button class="btn btn-primary" id="startBtn">${state.history.length ? "이어하기" : "128강 시작하기"}</button>
-          ${state.history.length ? `<button class="btn btn-secondary" id="resetBtn">처음부터</button>` : ``}
-        </div>
-        <div class="rules">
-          <div class="rule"><strong>대표 메뉴 기준</strong><span class="tiny">세부 변형은 대표 음식 단위로 통합</span></div>
-          <div class="rule"><strong>균형 대진</strong><span class="tiny">같은 체급끼리 붙고 유사 메뉴는 초반 분리</span></div>
-          <div class="rule"><strong>자연스러운 토너먼트</strong><span class="tiny">128강만 균형 배치, 이후는 승자끼리 진행</span></div>
+        <p>128가지 음식 DB에서 원하는 플레이 길이를 골라보세요. 선택 기록으로 최애 음식과 취향, 오늘 먹기 좋은 메뉴까지 찾아드려요.</p>
+
+        <button class="btn btn-primary hero-start-btn" id="startBtn">
+          ${config.roundSize}강 시작하기
+        </button>
+
+        <div class="mode-grid">
+          <button class="mode-card ${mode === 64 ? "active" : ""}" data-mode="64" type="button">
+            <div class="mode-card-top">
+              <span class="mode-badge recommended">추천</span>
+              <span class="mode-round">64강</span>
+            </div>
+            <strong>기본 모드</strong>
+            <p>기본 모드로 즐기는 음식 이상형 월드컵</p>
+            <span class="mode-count">63번 선택</span>
+          </button>
+
+          <button class="mode-card ${mode === 32 ? "active" : ""}" data-mode="32" type="button">
+            <div class="mode-card-top">
+              <span class="mode-badge quick">QUICK</span>
+              <span class="mode-round">32강</span>
+            </div>
+            <strong>빠르게 하기</strong>
+            <p>빠르게 알아보는 오늘의 추천 메뉴</p>
+            <span class="mode-count">31번 선택</span>
+          </button>
+
+          <button class="mode-card ${mode === 128 ? "active" : ""}" data-mode="128" type="button">
+            <div class="mode-card-top">
+              <span class="mode-badge challenge">CHALLENGE</span>
+              <span class="mode-round">128강</span>
+            </div>
+            <strong>도전 모드</strong>
+            <p>심도 깊게 알아보는 내 음식 취향</p>
+            <span class="mode-count">127번 선택</span>
+          </button>
         </div>
       </section>
     </div>`;
@@ -905,7 +1009,7 @@
       // footer
       ctx.fillStyle = C.muted;
       ctx.font = "700 17px Pretendard, Apple SD Gothic Neo, sans-serif";
-      ctx.fillText("127번의 실제 선택 기록으로 만든 나만의 음식 취향 카드", 92, 1280);
+      ctx.fillText("${state.history.length}번의 실제 선택 기록으로 만든 나만의 음식 취향 카드", 92, 1280);
 
     }else{
       // STORY 9:16 — spacious vertical layout
@@ -978,7 +1082,7 @@
 
       ctx.fillStyle=C.muted;
       ctx.font="700 18px Pretendard, Apple SD Gothic Neo, sans-serif";
-      ctx.fillText("127번의 실제 선택 기록으로 만든 나만의 음식 취향 카드",92,1820);
+      ctx.fillText("${state.history.length}번의 실제 선택 기록으로 만든 나만의 음식 취향 카드",92,1820);
     }
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve,"image/png"));
@@ -1163,7 +1267,7 @@
             <span class="eyebrow">MY TASTE PROFILE</span>
             <h2>선택으로 드러난 세부 취향</h2>
           </div>
-          <span class="analysis-note">127번의 선택 기록 기반</span>
+          <span class="analysis-note">${state.history.length}번의 선택 기록 기반</span>
         </div>
         ${preferenceBars()}
       </section>
@@ -1199,6 +1303,9 @@
 
   function bind(){
     document.getElementById("startBtn")?.addEventListener("click", start);
+    document.querySelectorAll("[data-mode]").forEach(card => {
+      card.addEventListener("click", () => selectMode(card.dataset.mode));
+    });
     document.getElementById("playFromSharedBtn")?.addEventListener("click", () => location.href = "/");
     document.getElementById("playFromSharedBtnBottom")?.addEventListener("click", () => location.href = "/");
     document.getElementById("resetBtn")?.addEventListener("click", reset);

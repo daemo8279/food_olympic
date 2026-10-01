@@ -32,3 +32,17 @@
 - Root OG URLs are hardcoded to `https://foodolympic.kyoon.app`.
 - New root image URL: `/og-home-v16.jpg`.
 - Dynamic result OG route bumped to `/og-v16/{token}.png`.
+
+
+## v17
+- 64강 기본 모드
+- 32강 빠르게 하기
+- 128강 도전 모드
+- 128개 DB 유지
+- 결과 분석의 선택 횟수 문구를 실제 플레이 모드에 맞게 변경
+
+
+## v18 copy update
+- 기본 모드 · 64강 — 기본 모드로 즐기는 음식 이상형 월드컵
+- 빠르게 하기 · 32강 — 빠르게 알아보는 오늘의 추천 메뉴
+- 도전 모드 · 128강 — 심도 깊게 알아보는 내 음식 취향
