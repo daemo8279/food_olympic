@@ -578,22 +578,14 @@
 
   function buildSharePayload(){
     const d = shareData();
+
+    // Keep shared URLs short enough for Kakao link unfurling.
+    // Only the data required by the shared result/OG card is encoded.
     return {
-      v: 1,
-      character: d.character,
-      champion: {
-        name: d.champion.name,
-        category: d.champion.category,
-        taste: d.champion.taste,
-        region: d.champion.region
-      },
-      best5: d.best5.map(x => ({ name: x.food.name })),
-      tastes: d.tastes.map(x => ({ label: x.label, rate: x.rate })),
-      recs: d.recs.map(x => ({ name: x.food.name, taste: x.food.taste, category: x.food.category })),
-      insight: {
-        headline: d.insight.headline,
-        body: d.insight.body
-      }
+      v: 2,
+      c: d.champion.name,
+      b: d.best5.slice(0,5).map(x => x.food.name),
+      r: d.recs.slice(0,3).map(x => x.food.name)
     };
   }
 
@@ -685,79 +677,101 @@
   }
 
   function renderSharedResultView(payload){
+    // v2 compact payload:
+    // { v:2, c:"우승", b:["BEST..."], r:["추천..."] }
+    if(payload?.v === 2 && payload?.c){
+      const championName = payload.c;
+      const best5 = Array.isArray(payload.b) ? payload.b : [];
+      const recs = Array.isArray(payload.r) ? payload.r : [];
+
+      return `<div class="shell result-page shared-result-page">
+        <header class="brand result-brand">
+          <div class="logo">오늘 뭐 먹지? <b>WORLD CUP</b></div>
+          <button class="btn btn-primary" id="playFromSharedBtn">나도 해보기</button>
+        </header>
+
+        <section class="winner-hero">
+          <div class="winner-kicker">🏆 공유된 결과</div>
+          <div class="food-visual shared-visual">
+            <div class="food-art">
+              <div class="food-plate"></div>
+              <div class="food-icon">${iconFor(championName)}</div>
+            </div>
+          </div>
+          <h1>${championName}</h1>
+          <p class="taste-character">이 음식이 최종 우승했어요.</p>
+        </section>
+
+        <section class="analysis-card">
+          <div class="analysis-card-head">
+            <div>
+              <span class="eyebrow">BEST MENU</span>
+              <h2>가장 좋아한 음식</h2>
+            </div>
+          </div>
+          <div class="shared-best5">
+            ${best5.map((name,i)=>`
+              <div class="shared-best5-item">
+                <span class="shared-best5-rank">${i+1}</span>
+                <span class="shared-best5-icon">${iconFor(name)}</span>
+                <strong>${name}</strong>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+
+        <section class="today-section">
+          <div class="today-head">
+            <div>
+              <span class="eyebrow">TODAY RECOMMEND</span>
+              <h2>오늘 추천 메뉴</h2>
+            </div>
+          </div>
+          <div class="today-recs">
+            ${recs.map((name,i)=>`
+              <div class="today-rec-card shared-rec-card">
+                <span class="rec-rank">${i+1}</span>
+                <span class="rec-icon">${iconFor(name)}</span>
+                <span class="rec-copy"><strong>${name}</strong></span>
+              </div>
+            `).join("")}
+          </div>
+        </section>
+
+        <div class="result-actions">
+          <button class="btn btn-primary" id="playFromSharedBtnBottom">나도 음식 월드컵 해보기</button>
+        </div>
+      </div>`;
+    }
+
+    // Legacy payload fallback, so old links do not break.
     const champion = payload.champion;
     const tastes = payload.tastes || [];
     const recs = payload.recs || [];
     const best5 = payload.best5 || [];
     const insight = payload.insight || { headline:"", body:"" };
+
     return `<div class="shell result-page shared-result-page">
       <header class="brand result-brand">
         <div class="logo">오늘 뭐 먹지? <b>WORLD CUP</b></div>
         <button class="btn btn-primary" id="playFromSharedBtn">나도 해보기</button>
       </header>
-
       <section class="winner-hero">
         <div class="winner-kicker">🔗 공유된 결과</div>
         <div class="food-visual shared-visual"><div class="food-art"><div class="food-plate"></div><div class="food-icon">${iconFor(champion.name)}</div></div></div>
         <h1>${champion.name}</h1>
-        <div class="meta">
-          <span class="chip">${champion.category}</span>
-          <span class="chip">${champion.taste}</span>
-          <span class="chip">${champion.region}</span>
-        </div>
         <p class="taste-character">${payload.character || ""}</p>
       </section>
-
       <section class="analysis-card">
-        <div class="analysis-card-head">
-          <div>
-            <span class="eyebrow">SHARED RESULT</span>
-            <h2>이 사람이 좋아한 음식 TOP 5</h2>
-          </div>
-        </div>
         <div class="shared-best5">
           ${best5.map((x,i)=>`<div class="shared-best5-item"><span class="shared-best5-rank">${i+1}</span><span class="shared-best5-icon">${iconFor(x.name)}</span><strong>${x.name}</strong></div>`).join("")}
         </div>
       </section>
-
-      <section class="analysis-card">
-        <div class="analysis-card-head">
-          <div>
-            <span class="eyebrow">TOP TASTES</span>
-            <h2>좋아하는 맛</h2>
-          </div>
-        </div>
-        <div class="pref-bars">
-          ${tastes.map(x => `
-            <div class="pref-row">
-              <div class="pref-label"><span>${x.label}</span><strong>${x.rate}</strong></div>
-              <div class="pref-track"><span style="width:${Math.max(4,x.rate)}%"></span></div>
-            </div>
-          `).join("")}
-        </div>
-      </section>
-
-      <section class="insight-card">
-        <span class="insight-label">뜻밖의 발견</span>
-        <h2>${insight.headline}</h2>
-        <p>${insight.body}</p>
-      </section>
-
       <section class="today-section">
-        <div class="today-head">
-          <div>
-            <span class="eyebrow">DINNER RECOMMENDATION</span>
-            <h2>오늘 저녁 메뉴 추천</h2>
-          </div>
-        </div>
         <div class="today-recs">
           ${recs.map((x,i)=>sharedRecCard(x,i)).join("")}
         </div>
       </section>
-
-      <div class="result-actions">
-        <button class="btn btn-primary" id="playFromSharedBtnBottom">나도 128강 해보기</button>
-      </div>
     </div>`;
   }
 
@@ -1168,7 +1182,7 @@
 
         <section class="share-link-box">
           <h3>개인 결과 링크 공유</h3>
-          <p>카카오톡 미리보기를 위해 <b>결과 URL만 복사</b>합니다. 복사한 링크를 카카오톡에 그대로 붙여넣으세요.</p>
+          <p>카카오톡 미리보기를 위해 <b>짧게 압축한 결과 URL만 복사</b>합니다. 카카오톡에 링크만 그대로 붙여넣으세요.</p>
           <input class="share-link-input" id="shareLinkInput" readonly />
         </section>
 

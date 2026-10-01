@@ -46,3 +46,10 @@
 - 기본 모드 · 64강 — 기본 모드로 즐기는 음식 이상형 월드컵
 - 빠르게 하기 · 32강 — 빠르게 알아보는 오늘의 추천 메뉴
 - 도전 모드 · 128강 — 심도 깊게 알아보는 내 음식 취향
+
+
+## v19
+- Personal result URLs now use a compact payload.
+- Share URL contains only champion, BEST 5 food names, and 3 recommendations.
+- Dynamic OG route bumped to `/og-v19/{token}.png`.
+- Legacy full-result tokens remain supported.

@@ -7,14 +7,14 @@ export default {
 
     if (url.pathname.startsWith("/result/")) {
       const token = url.pathname.slice("/result/".length);
-      const data = decodeToken(token);
+      const data = normalizeShareData(decodeToken(token));
       if (!data?.champion?.name) return new Response("Invalid result token", { status: 400 });
       return resultPage(url, token, data);
     }
 
-    if (url.pathname.startsWith("/og-v16/") && url.pathname.endsWith(".png")) {
-      const token = url.pathname.slice("/og-v16/".length, -4);
-      const data = decodeToken(token);
+    if (url.pathname.startsWith("/og-v19/") && url.pathname.endsWith(".png")) {
+      const token = url.pathname.slice("/og-v19/".length, -4);
+      const data = normalizeShareData(decodeToken(token));
       if (!data?.champion?.name) return new Response("Invalid OG token", { status: 400 });
 
       const cache = caches.default;
@@ -48,6 +48,17 @@ function esc(s = "") {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function normalizeShareData(data) {
+  if (data?.v === 2 && data?.c) {
+    return {
+      champion: { name: String(data.c) },
+      best5: (Array.isArray(data.b) ? data.b : []).map(name => ({ name: String(name) })),
+      recs: (Array.isArray(data.r) ? data.r : []).map(name => ({ name: String(name) }))
+    };
+  }
+  return data;
 }
 
 function compactNames(items, limit = 3) {
@@ -154,7 +165,7 @@ function resultPage(url, token, data) {
   const champion = String(data.champion?.name || "");
   const bestMenu = compactNames(data.best5, 3);
   const todayMenu = compactNames(data.recs, 3);
-  const ogImage = `${url.origin}/og-v16/${token}.png`;
+  const ogImage = `${url.origin}/og-v19/${token}.png`;
   const appView = `${url.origin}/?share=${encodeURIComponent(token)}`;
 
   const title = `${champion} 우승! 음식 이상형 월드컵 결과`;
